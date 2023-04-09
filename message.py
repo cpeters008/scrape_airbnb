@@ -1,11 +1,12 @@
 # message.py
 from datetime import datetime
+from message_parser import *
 
 class Message:
     def __init__(self, cid, sender, content, timestamp):
         self.cid = cid
         self.sender = sender
-        self.content = content
+        self.content = clean_content(content)
         self.timestamp = timestamp
 
     def __repr__(self):
