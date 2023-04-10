@@ -1,6 +1,6 @@
-from message_parser import parse_messages
-from driver_funcs import *
-from file_funcs import *
+from scraper.message_parser import parse_messages
+from scraper.driver_funcs import *
+from scraper.file_funcs import *
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -64,7 +64,7 @@ def scrape_airbnb(output_format):
         status_span = conversation.find_element(By.XPATH, './/div[2]//span[1]')
         status_text = status_span.text
 
-        if status_text not in ['Confirmed', 'Currently hosting', 'Past guest']:
+        if status_text not in ['Confirmed', 'Currently hosting', 'Past guest', 'Review guest']:
             continue
         a_element = conversation.find_element(By.XPATH, f'//*[@id="host-inbox-threads"]/li[{index+1}]/div/a')
         cid = a_element.get_attribute("data-threadid")

@@ -1,5 +1,5 @@
 import argparse
-from scrape_airbnb import scrape_airbnb
+from scraper.scrape_airbnb import scrape_airbnb
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Write messages to a file in the specified format.')

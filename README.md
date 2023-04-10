@@ -5,8 +5,19 @@ This project is designed to scrape Airbnb listings data. The main entry point fo
 ## Prerequisites
 
 - Python 3.8 or higher
+  ```
+  python3 -m textblob.download_corpora
+  python3 -m spacy download en_core_web_sm
+  ```
 - Git
 - A virtual environment tool (e.g., `venv`)
+- Install Homebrew
+- Install the following:
+  ```
+  brew install enchant
+  brew install openssl
+  brew install ca-certificates
+  ```
 
 ## Setup Instructions
 
@@ -54,6 +65,19 @@ python3 main.py
 ```
 
 You can customize the scraper's behavior by modifying the parameters in `main.py` or the configuration settings in `config.ini`.
+
+## Testing
+
+To run the unittests for the Airbnb scraper, navigate to test
+```
+cd test
+```
+and run the following command:
+```
+python3 -m unittest discover
+```
+
+All tests should pass.
 
 ## Outputs
 
