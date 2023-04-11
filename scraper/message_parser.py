@@ -13,7 +13,6 @@ def parse_messages(raw_text, cid):
         content = match.group(2).strip()
         timestamp = datetime.strptime(match.group(3), "%b %d, %Y, %I:%M %p")
         message = Message(cid, sender, content, timestamp)
-        message.clean_content()
         messages.append(message)
 
     return messages

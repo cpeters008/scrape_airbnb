@@ -2,13 +2,9 @@
 import re
 import spacy
 import string
-import enchant
-import nltk
 import Levenshtein as lev
-from nltk.corpus import brown
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.metrics.distance import edit_distance
-from textblob import TextBlob
+import nltk
+from nameparser import HumanName
 
 class Message:
     def __init__(self, cid, sender, content, timestamp):
@@ -30,40 +26,45 @@ class Message:
                 'content': self.content
             }
     
-    def remove_emails(self):
-        self.content = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[email]', self.content)
+    # def remove_emails(self):
+    #     self.content = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[email]', self.content)
 
-    def remove_phone_numbers(self):
-        self.content = re.sub(r'(\+?\d{1,3}?\s*(?:-|\.)?\s*)?(\(?\d{2,3}\)?|\d{2,3})(?:\s*|-|\.)?\d{2,4}(?:\s*|-|\.)?\d{2,4}', '[phone]', self.content)
+    # def remove_phone_numbers(self):
+    #     self.content = re.sub(r'(\+?\d{1,3}?\s*(?:-|\.)?\s*)?(\(?\d{2,3}\)?|\d{2,3})(?:\s*|-|\.)?\d{2,4}(?:\s*|-|\.)?\d{2,4}', '[phone]', self.content)
 
-    def remove_names(self):
-        nlp = spacy.load('en_core_web_sm')
-        doc = nlp(self.content)
-        for ent in doc.ents:
-            if ent.label_ == 'PERSON':
-                self.content = self.content.replace(ent.text, '[name]')
+    # def remove_names(self):
+    #     nlp = spacy.load('en_core_web_sm')
+    #     doc = nlp(self.content)
+    #     for ent in doc.ents:
+    #         if ent.label_ == 'PERSON':
+    #             # Use nameparser to parse out first and last names
+    #             name = HumanName(ent.text)
+    #             first_name = name.first
+    #             last_name = name.last
+    #             if first_name:
+    #                 # Remove first name from content
+    #                 self.content = re.sub(r'\b{}\b'.format(first_name), '[name]', self.content)
+    #             if last_name:
+    #                 # Remove last name from content
+    #                 self.content = re.sub(r'\b{}\b'.format(last_name), '[name]', self.content)
 
-    def correct_typos(self):
-        if not nltk.data.find('corpora/brown'):
-            nltk.download('brown')
-        if not nltk.data.find('taggers/averaged_perceptron_tagger'):
-            nltk.download('averaged_perceptron_tagger')
-        if not nltk.data.find('tokenizers/punkt'):
-            nltk.download('punkt')
-
-        # Load the Brown corpus and create a list of words
-        words = set(brown.words())
-        words.update(nltk.corpus.words.words())
-
-        d = enchant.Dict("en_US")
-
+    def correct_typos(self, d, words):
         # Tokenize the content
-        tokens = word_tokenize(self.content)
+        tokens = nltk.wordpunct_tokenize(self.content)
 
-        # Correct typos using TextBlob and pyenchant
+        # Tag the tokens with POS
+        tagged_tokens = nltk.pos_tag(tokens)
+
+        # Correct typos using pyenchant
         corrected_tokens = []
-        for i, token in enumerate(tokens):
-            if token.isalpha() and not d.check(token):
+        orig_tokens = []
+        for i, (token, pos) in enumerate(tagged_tokens):
+            if pos.startswith('N') and token.lower() not in words:
+                # Don't correct proper nouns
+                corrected_tokens.append(token)
+                orig_tokens.append((token, i))
+            elif not d.check(token):
+                # Correct typos
                 suggestions = d.suggest(token)
                 if suggestions:
                     distances = [lev.distance(token, sugg) for sugg in suggestions]
@@ -71,16 +72,30 @@ class Message:
                     corrected_tokens.append(best_match)
                 else:
                     corrected_tokens.append(token)
+                orig_tokens.append((token, i))
             else:
                 corrected_tokens.append(token)
+                orig_tokens.append((token, i))
+
+        # Add back punctuation
+        for i, (token, idx) in enumerate(orig_tokens):
+            if i > 0 and idx > orig_tokens[i-1][1]+1:
+                orig_tokens[i] = (token, idx+i-1)
+            elif idx == orig_tokens[0][1]:
+                orig_tokens[0] = (token, idx+len(token))
 
         # Join the corrected tokens back into a string
-        self.content = ''.join([' ' + token if not token.startswith("'") and token not in string.punctuation else token for token in corrected_tokens]).strip()
+        corrected_str = []
+        for i, (token, ws) in enumerate(corrected_tokens):
+            if len(ws) < 2:
+                corrected_str.append(token)
+            else:
+                corrected_str.append(''.join(ws[:-1]) + token)
+            if i < len(corrected_tokens) - 1:
+                corrected_str.append(self.content[orig_tokens[i][1]+1:orig_tokens[i+1][1]])
+        self.content = ''.join(corrected_str)
 
-            
+
     # Clean data for analysis
-    def clean_content(self):
-        self.remove_emails()
-        self.remove_phone_numbers()
-        self.remove_names()
-        self.correct_typos()
+    def clean_content(self, d, words):
+        self.correct_typos(d,words)
